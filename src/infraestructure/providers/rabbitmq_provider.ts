@@ -1,5 +1,5 @@
 import * as amqp from 'amqplib';
-import { RABBIT_URL, RABBIT_QUEUE } from '../../config/config'; 
+import { RABBIT_URL, RABBIT_QUEUE } from '../../config/config';
 
 const EXCHANGE_NAME = 'domain_events';
 
@@ -8,7 +8,7 @@ export class RabbitMQProvider {
   private connection: amqp.Connection | null = null;
   private channel: amqp.Channel | null = null;
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): RabbitMQProvider {
     if (!RabbitMQProvider.instance) {
@@ -31,7 +31,7 @@ export class RabbitMQProvider {
       }
 
       console.log('🐰 Conectando a RabbitMQ...');
-      
+
       // Conexión
       const url = RABBIT_URL || 'amqp://localhost';
       this.connection = await amqp.connect(url) as unknown as amqp.Connection;
@@ -42,30 +42,30 @@ export class RabbitMQProvider {
 
       // Forzamos el tipo a 'any' para evitar un error de tipado en @types/amqplib. El método .createChannel() sí existe.
       this.channel = await (this.connection as any).createChannel();
-      
+
       console.log('✅ RabbitMQ conectado exitosamente. Configurando estructuras...');
 
       // ** CONFIGURACIÓN DE ESTRUCTURAS DE COLAS (Binding) **
-      
+
       // 1. Asegurar el Exchange de tipo 'topic'
       await (this.channel as any).assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
-      
+
       // 2. Asegurar que MI cola (Notificaciones) existe
       const q = await (this.channel as any).assertQueue(RABBIT_QUEUE, { durable: true });
 
       // 3. UNIR (Bind) mi cola al Exchange
-      // La clave de routing 'auth.#' significa: Escuchar todo lo que empiece por 'auth.'
-      const bindingKey = 'auth.#'; 
+      // La clave de routing 'auth.user.*' significa: Escuchar eventos de usuarios (auth.user.registered, auth.user.logged_in, etc.)
+      const bindingKey = 'auth.user.*';
       await (this.channel as any).bindQueue(q.queue, EXCHANGE_NAME, bindingKey);
-      
+
       console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${EXCHANGE_NAME} con key: ${bindingKey}`);
 
       // Devolver el canal tipado
       if (!this.channel) {
         throw new Error('El canal de RabbitMQ no ha sido inicializado.');
       }
-      return this.channel; 
-      
+      return this.channel;
+
     } catch (error) {
       console.error('❌ Error conectando a RabbitMQ:', error);
       throw error;
@@ -76,10 +76,10 @@ export class RabbitMQProvider {
    * Obtiene el canal de RabbitMQ para usarlo en el Consumer.
    */
   public getChannel(): amqp.Channel {
-      if (!this.channel) {
-          throw new Error('El canal de RabbitMQ no ha sido inicializado. Llama a connect() primero.');
-      }
-      return this.channel;
+    if (!this.channel) {
+      throw new Error('El canal de RabbitMQ no ha sido inicializado. Llama a connect() primero.');
+    }
+    return this.channel;
   }
 
   async disconnect(): Promise<void> {

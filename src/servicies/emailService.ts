@@ -10,16 +10,16 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendResetCodeEmail(to: string, code: string): Promise<void> {
+export async function sendResetCodeEmail(to: string, link: string): Promise<void> {
   const mailOptions = {
-    from: `"Tu App Store" <${process.env.SMTP_USER}>`,
+    from: `"Aura - Plataforma de Bienestar Mental Juvenil" <${process.env.SMTP_USER}>`,
     to,
-    subject: "Código para restablecer contraseña",
+    subject: "Link de recuperación de contraseña",
     html: `
       <h2>Restablecer tu contraseña</h2>
-      <p>Tu código de verificación es:</p>
-      <h1 style="color: #333;">${code}</h1>
-      <p>Este código expirará en 10 minutos.</p>
+      <p>Para restablecer tu contraseña, haz clic en el siguiente enlace:</p>
+      <a href="${link}">Restablecer Contraseña</a>
+      <p>Este enlace expirará en 10 minutos.</p>
     `,
   };
 

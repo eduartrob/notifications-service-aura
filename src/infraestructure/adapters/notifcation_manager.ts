@@ -1,5 +1,6 @@
 import { Notification } from "../../domain/notification_entity";
 import { NotificationSenderPort } from "../../domain/notification_sender_port";
+import { sendResetCodeEmail } from "../../servicies/emailService";
 
 export class NotificationManagerAdapter implements NotificationSenderPort {
   async send(notification: Notification): Promise<void> {
@@ -14,10 +15,23 @@ export class NotificationManagerAdapter implements NotificationSenderPort {
         // Aquí llamarías a Twilio
         console.log(`[Twilio Adapter] Enviando SMS a ${notification.userId}: ${notification.body}`);
         break;
-      
+
       case 'EMAIL':
-        // Aquí llamarías a Nodemailer/SendGrid
-        console.log(`[Email Adapter] Enviando Email a ${notification.userId}: ${notification.body}`);
+        const recipientEmail = notification.metadata?.recipientEmail;
+
+        if (!recipientEmail) {
+          console.error('[Email Adapter] No recipient email provided in metadata');
+          return;
+        }
+
+        if (notification.metadata?.type === 'PASSWORD_RECOVERY') {
+          // En este caso, el body contiene el link de recuperación
+          await sendResetCodeEmail(recipientEmail, notification.body);
+          console.log(`[Email Adapter] Email de recuperación enviado a ${recipientEmail}`);
+        } else {
+          // Lógica por defecto para otros emails (o implementar un sendGenericEmail)
+          console.log(`[Email Adapter] Enviando Email Genérico a ${recipientEmail}: ${notification.body}`);
+        }
         break;
 
       default:
