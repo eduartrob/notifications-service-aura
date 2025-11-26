@@ -55,10 +55,15 @@ export class RabbitMQProvider {
 
       // 3. UNIR (Bind) mi cola al Exchange
       // La clave de routing 'auth.user.*' significa: Escuchar eventos de usuarios (auth.user.registered, auth.user.logged_in, etc.)
-      const bindingKey = 'auth.user.*';
-      await (this.channel as any).bindQueue(q.queue, EXCHANGE_NAME, bindingKey);
+      const authBindingKey = 'auth.user.*';
+      await (this.channel as any).bindQueue(q.queue, EXCHANGE_NAME, authBindingKey);
+      console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${EXCHANGE_NAME} con key: ${authBindingKey}`);
 
-      console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${EXCHANGE_NAME} con key: ${bindingKey}`);
+      // 4. UNIR (Bind) para eventos sociales (likes, comments, follows)
+      // Usamos social.# para capturar TODOS los niveles: social.publication.liked, social.user.followed, etc.
+      const socialBindingKey = 'social.#';
+      await (this.channel as any).bindQueue(q.queue, EXCHANGE_NAME, socialBindingKey);
+      console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${EXCHANGE_NAME} con key: ${socialBindingKey}`);
 
       // Devolver el canal tipado
       if (!this.channel) {

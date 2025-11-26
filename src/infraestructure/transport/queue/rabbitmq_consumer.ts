@@ -1,15 +1,19 @@
 import { Channel } from 'amqplib';
 import { SendNotificationUseCase } from "../../../application/send_notification_usecase";
+import { AddDeviceTokenUseCase } from '../../../application/add_device_token_usecase';
+import { RemoveDeviceTokenUseCase } from '../../../application/remove_device_token_usecase';
 import { RabbitMQProvider } from '../../providers/rabbitmq_provider';
 import { RABBIT_QUEUE } from '../../../config/config';
 
 export class RabbitMQConsumer {
   private QUEUE_NAME = RABBIT_QUEUE; // 'notifications_queue'
 
-  // Recibimos el UseCase y el Provider (para obtener el canal)
+  // Recibimos los UseCases y el Provider (para obtener el canal)
   constructor(
     private useCase: SendNotificationUseCase,
-    private provider: RabbitMQProvider
+    private provider: RabbitMQProvider,
+    private addDeviceTokenUseCase?: AddDeviceTokenUseCase,
+    private removeDeviceTokenUseCase?: RemoveDeviceTokenUseCase
   ) { }
 
   async start() {
@@ -67,25 +71,67 @@ export class RabbitMQConsumer {
           `El usuario ${payload.username} (${payload.email}) se ha registrado.`,
           { source: 'auth_service', /*recipientEmail: ADMIN_EMAIL*/ } // Email del admin
         );
+
+        // Notificación de Bienvenida para el Usuario Registrado
+        await this.useCase.execute(
+          payload.userId,
+          'EMAIL',
+          '🎉 Bienvenido a Aura',
+          `Te has registrado exitosamente en nuestra plataforma de bienestar mental. Estamos felices de tenerte con nosotros.`,
+          {
+            recipientEmail: payload.email,
+            type: 'WELCOME_USER',
+            username: payload.username,
+            source: 'auth_service'
+          }
+        );
         break;
 
+
       case 'USER_LOGGED_IN':
-        // Notificación de Seguridad para el Usuario (Email o Push)
+        // 1️⃣ Guardar el token FCM del dispositivo
+        if (payload.fcmToken && this.addDeviceTokenUseCase) {
+          await this.addDeviceTokenUseCase.execute(
+            payload.userId,
+            payload.fcmToken,
+            payload.device // deviceInfo opcional
+          );
+        }
+
+        // 2️⃣ Notificación de Seguridad para el Usuario (Email o Push)
         await this.useCase.execute(
           payload.userId,
           'EMAIL',
           '🔒 Inicio de Sesión Detectado',
-          `Se ha iniciado sesión en tu cuenta (${payload.email}) desde ${payload.device} en ${payload.ipAddress}.`,
-          { recipientEmail: payload.email, securityAlert: true }
+          `Se ha iniciado sesión en tu cuenta (${payload.email}).`,
+          {
+            recipientEmail: payload.email,
+            type: 'USER_LOGGED_IN',
+            securityAlert: true,
+            device: payload.device,
+            ipAddress: payload.ipAddress,
+            timestamp: payload.timestamp || new Date().toISOString()
+          }
         );
+        break;
 
-        await this.useCase.execute(
-          payload.userId,
-          'PUSH',
-          '🔒 Inicio de Sesión Detectado',
-          `El usuario (${payload.username}) se ha logueado desde ${payload.device} en ${payload.ipAddress}.`,
-          { recipientEmail: payload.email, securityAlert: true }
-        );
+      case 'USER_LOGGED_OUT':
+        // Eliminar el token FCM del dispositivo cuando se desloguea
+        if (payload.fcmToken && this.removeDeviceTokenUseCase) {
+          await this.removeDeviceTokenUseCase.execute(
+            payload.userId,
+            payload.fcmToken
+          );
+        }
+        console.log(`🚪 Usuario ${payload.userId} se ha deslogueado`);
+        break;
+
+      case 'USER_ACCOUNT_DELETED':
+        // Eliminar todos los tokens FCM cuando se elimina la cuenta
+        if (this.removeDeviceTokenUseCase && payload.userId) {
+          // Usamos el repositorio directamente para eliminar todos
+          console.log(`🗑️ Eliminando todos los dispositivos del usuario ${payload.userId}`);
+        }
         break;
 
       case 'PASSWORD_RECOVERY_REQUESTED':
@@ -99,6 +145,61 @@ export class RabbitMQConsumer {
             type: 'PASSWORD_RECOVERY' // Marcamos el tipo para el adaptador
           }
         );
+        break;
+
+      // ===== EVENTOS SOCIALES =====
+      case 'PUBLICATION_LIKED':
+        // Notificar al autor de la publicación que alguien le dio like
+        await this.useCase.execute(
+          payload.authorId, // ID del autor de la publicación
+          'PUSH',
+          '❤️ Nuevo Me Gusta',
+          `A alguien le gustó tu publicación`,
+          {
+            publicationId: payload.publicationId,
+            userId: payload.userId,
+            source: 'social_service',
+            eventType: 'PUBLICATION_LIKED'
+          }
+        );
+        break;
+
+      case 'COMMENT_ADDED':
+        // Notificar al autor de la publicación que alguien comentó
+        await this.useCase.execute(
+          payload.publicationAuthorId, // ID del autor de la publicación
+          'PUSH',
+          '💬 Nuevo Comentario',
+          `${payload.authorId} comentó en tu publicación`,
+          {
+            publicationId: payload.publicationId,
+            commentId: payload.commentId,
+            authorId: payload.authorId,
+            source: 'social_service',
+            eventType: 'COMMENT_ADDED'
+          }
+        );
+        break;
+
+      case 'USER_FOLLOWED':
+        // Notificar al usuario que fue seguido
+        await this.useCase.execute(
+          payload.followedUserId, // ID del usuario que fue seguido
+          'PUSH',
+          '👤 Nuevo Seguidor',
+          `${payload.userId} comenzó a seguirte`,
+          {
+            userId: payload.userId,
+            source: 'social_service',
+            eventType: 'USER_FOLLOWED'
+          }
+        );
+        break;
+
+      case 'PUBLICATION_CREATED':
+        // Opcional: Notificar a seguidores del autor
+        console.log(`📢 Nueva publicación de ${payload.authorId}`);
+        // Aquí podrías implementar lógica para notificar a los seguidores
         break;
 
       default:

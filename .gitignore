@@ -1,3 +1,5 @@
 /node_modules
 /dist
 /.env
+src/config/aura-firebase-adminsdk.json
+/src/generated/prisma

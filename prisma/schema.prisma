@@ -1,0 +1,23 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 📱 Modelo para almacenar tokens FCM de dispositivos por usuario
+model UserDevice {
+  id         String   @id @default(uuid())
+  userId     String   // ID del usuario (viene de auth-service)
+  fcmToken   String   @unique // Token FCM único por dispositivo
+  deviceInfo String?  // Información opcional del dispositivo (navegador, OS, etc.)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId]) // Índice para búsquedas rápidas por userId
+  @@map("user_devices")
+}
