@@ -3,6 +3,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /usr/src/app
 
+# Install OpenSSL (required by Prisma 7.x)
+RUN apk add --no-cache openssl
+
 COPY package*.json ./
 
 RUN npm install
@@ -19,6 +22,9 @@ RUN npm run build
 FROM node:20-alpine
 
 WORKDIR /usr/src/app
+
+# Install OpenSSL (required by Prisma 7.x)
+RUN apk add --no-cache openssl
 
 COPY package*.json ./
 
