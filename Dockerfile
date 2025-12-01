@@ -12,9 +12,6 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Deploy migrations
-RUN npx prisma migrate deploy
-
 # Build TypeScript code
 RUN npm run build
 
@@ -33,4 +30,9 @@ COPY --from=builder /usr/src/app/node_modules/@prisma ./node_modules/@prisma
 
 EXPOSE 3004
 
+# Copy entrypoint script
+COPY scripts/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
+ENTRYPOINT ["./entrypoint.sh"]
 CMD [ "npm", "start" ]
