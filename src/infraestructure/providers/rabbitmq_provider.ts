@@ -65,6 +65,11 @@ export class RabbitMQProvider {
       await (this.channel as any).bindQueue(q.queue, EXCHANGE_NAME, socialBindingKey);
       console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${EXCHANGE_NAME} con key: ${socialBindingKey}`);
 
+      // 5. UNIR (Bind) para eventos de mensajería
+      const messagingBindingKey = 'messaging.#';
+      await (this.channel as any).bindQueue(q.queue, EXCHANGE_NAME, messagingBindingKey);
+      console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${EXCHANGE_NAME} con key: ${messagingBindingKey}`);
+
       // Devolver el canal tipado
       if (!this.channel) {
         throw new Error('El canal de RabbitMQ no ha sido inicializado.');
