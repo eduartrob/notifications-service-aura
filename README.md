@@ -2,42 +2,29 @@
 
 Sistema de notificaciones multicanal (Email, Push, SMS) con gestión de tokens FCM para notificaciones push en tiempo real.
 
-## 🚀 Setup Rápido
+### 1. Configuración de Desarrollo (Recomendado)
 
-Ejecuta el script de configuración automática:
+El script `setup-dev.sh` automatiza toda la configuración para el entorno de desarrollo local.
 
-```bash
-./setup.sh
-```
-
-Este script:
-- ✅ Verifica Docker
-- ✅ Crea contenedor PostgreSQL
-- ✅ Configura variables de entorno
-- ✅ Ejecuta migraciones de Prisma
-- ✅ Genera Prisma Client
-
-## 📋 Requisitos Previos
-
-- Node.js 18+
-- Docker
-- RabbitMQ en ejecución
-- Credenciales de Firebase Admin SDK en `src/config/aura-firebase-adminsdk.json`
-
-## 🔧 Configuración Manual
-
-Si prefieres configurar manualmente:
-
-### 1. PostgreSQL con Docker
+Dar permisos de ejecución al script:
 
 ```bash
-docker run --name notifications-postgres \
-  -e POSTGRES_USER=notifications_user \
-  -e POSTGRES_PASSWORD=notifications_pass \
-  -e POSTGRES_DB=notifications_db \
-  -p 5433:5432 \
-  -d postgres:15
+chmod +x scripts/setup-dev.sh
 ```
+
+Ejecutar el script:
+
+```bash
+./scripts/setup-dev.sh
+```
+
+Este script se encargará de:
+
+-   Verificar requisitos (Node.js, PostgreSQL).
+-   Generar el archivo `.env`.
+-   Crear el usuario y la base de datos `notifications_db`.
+-   Instalar las dependencias del proyecto.
+-   Aplicar las migraciones de Prisma.
 
 ### 2. Variables de Entorno
 
@@ -168,12 +155,20 @@ docker logs notifications-postgres
 docker rm -f notifications-postgres
 ```
 
-## 🔐 Seguridad
+## 🔐 Seguridad y Validación
 
-- XSS protection en emails con sanitización
-- Validación de payloads en eventos
-- Credenciales en variables de entorno
-- Firebase Admin SDK con service account
+Este servicio implementa varias capas de seguridad y validación:
+
+### Validaciones Implementadas
+-   **Validación de Esquema**: Se utiliza `express-validator` para asegurar que los payloads de entrada (título, cuerpo, tipo) sean correctos.
+-   **Sanitización XSS**: Se utiliza la librería `xss` para limpiar cualquier HTML malicioso en los templates de correo.
+-   **Rate Limiting**: Protección contra fuerza bruta y DoS (100 peticiones/15min) usando `express-rate-limit`.
+-   **Cabeceras de Seguridad**: Implementación de `helmet` para configurar cabeceras HTTP seguras.
+
+### Áreas de Mejora (Roadmap)
+-   Implementar autenticación JWT en el endpoint `/notify` (actualmente público).
+-   Validar existencia de `userId` contra el servicio de usuarios.
+-   Validar formato de emails y teléfonos antes de enviar.
 
 ## 📚 Dependencias Principales
 
