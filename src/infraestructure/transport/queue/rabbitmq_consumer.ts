@@ -104,6 +104,9 @@ export class RabbitMQConsumer {
         case 'USER_LOGGED_OUT':
           await this.authHandler.handleUserLoggedOut(payload);
           break;
+        case 'USER_DELETED':
+          await this.authHandler.handleUserDeleted(payload);
+          break;
 
         // SOCIAL SERVICE
         case 'PUBLICATION_LIKED':
