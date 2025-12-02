@@ -11,7 +11,7 @@ export class AuthEventHandler {
     ) { }
 
     async handleUserRegistered(payload: any) {
-        // Notificación de Bienvenida para el Usuario Registrado
+        // Notificación de Bienvenida (Email)
         await this.sendNotificationUseCase.execute(
             payload.userId,
             'EMAIL',
@@ -27,21 +27,21 @@ export class AuthEventHandler {
     }
 
     async handleUserLoggedIn(payload: any) {
-        // 1️⃣ Guardar el token FCM del dispositivo
+        // 1️⃣ Guardar el token FCM (útil para otras notificaciones futuras, aunque esta alerta sea por email)
         if (payload.fcmToken && this.addDeviceTokenUseCase) {
             await this.addDeviceTokenUseCase.execute(
                 payload.userId,
                 payload.fcmToken,
-                payload.device // deviceInfo opcional
+                payload.device
             );
         }
 
-        // 2️⃣ Notificación de Seguridad para el Usuario (Email)
+        // 2️⃣ Alerta de Inicio de Sesión (Email)
         await this.sendNotificationUseCase.execute(
             payload.userId,
             'EMAIL',
-            '🔒 Inicio de Sesión Detectado',
-            `Se ha iniciado sesión en tu cuenta (${payload.email}).`,
+            '🔒 Nuevo Inicio de Sesión en Aura',
+            `Se ha detectado un nuevo inicio de sesión en tu cuenta (${payload.email}) el ${new Date().toLocaleString()}.`,
             {
                 recipientEmail: payload.email,
                 type: 'USER_LOGGED_IN',
@@ -51,6 +51,7 @@ export class AuthEventHandler {
     }
 
     async handlePasswordRecoveryRequested(payload: any) {
+        // Recuperación de Contraseña (Email)
         await this.sendNotificationUseCase.execute(
             payload.userId,
             'EMAIL',
@@ -65,7 +66,36 @@ export class AuthEventHandler {
     }
 
     async handleUserLoggedOut(payload: any) {
-        // Aquí podrías implementar lógica para notificar a los seguidores
-        console.log('📱 Usuario deslogueado:', payload.userId);
+        // Confirmación de Logout (Email)
+        if (payload.email) {
+            await this.sendNotificationUseCase.execute(
+                payload.userId,
+                'EMAIL',
+                '👋 Sesión Cerrada',
+                `Has cerrado sesión exitosamente de tu cuenta Aura.`,
+                {
+                    recipientEmail: payload.email,
+                    type: 'USER_LOGGED_OUT',
+                    source: 'auth_service'
+                }
+            );
+        }
+    }
+
+    async handleUserDeleted(payload: any) {
+        // Despedida por Eliminación de Cuenta (Email)
+        if (payload.email) {
+            await this.sendNotificationUseCase.execute(
+                payload.userId,
+                'EMAIL',
+                '😢 Cuenta Eliminada',
+                `Tu cuenta de Aura ha sido eliminada permanentemente. Lamentamos verte partir.`,
+                {
+                    recipientEmail: payload.email,
+                    type: 'USER_DELETED',
+                    source: 'auth_service'
+                }
+            );
+        }
     }
 }
