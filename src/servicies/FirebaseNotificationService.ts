@@ -24,27 +24,38 @@ export class FirebaseNotificationService {
             // Opción 2: Usar archivo JSON (Desarrollo local)
             else {
                 console.log('📂 Inicializando Firebase con archivo JSON');
-                const credentialsPath = process.env.FIREBASE_CREDENTIALS_PATH || './src/config/aura-firebase-adminsdk.json';
-
-                // Usar path absoluto o relativo desde la raíz del proyecto
-                // Ajuste para que funcione tanto en dev (src) como en prod (dist)
-                let serviceAccount;
+                // Intentar cargar archivo solo si existe, si no, no crashear
                 try {
-                    serviceAccount = require(`../${credentialsPath.replace('./src/', '')}`);
-                } catch (e) {
-                    // Intento alternativo para cuando corre desde dist
-                    serviceAccount = require(`../../config/aura-firebase-adminsdk.json`);
+                    const credentialsPath = process.env.FIREBASE_CREDENTIALS_PATH || './src/config/aura-firebase-adminsdk.json';
+                    let serviceAccount;
+                    try {
+                        // Intentar require dinámico
+                        // @ts-ignore
+                        serviceAccount = require(`../${credentialsPath.replace('./src/', '')}`);
+                    } catch (e) {
+                        try {
+                            // @ts-ignore
+                            serviceAccount = require(`../../config/aura-firebase-adminsdk.json`);
+                        } catch (e2) {
+                            console.warn('⚠️ No se encontró archivo JSON de Firebase ni variables de entorno.');
+                            console.warn('⚠️ El servicio de notificaciones funcionará parcialmente (sin Push Notifications).');
+                            return; // Salir sin inicializar, pero sin error
+                        }
+                    }
+
+                    if (serviceAccount) {
+                        this.app = admin.initializeApp({
+                            credential: admin.credential.cert(serviceAccount),
+                        });
+                        console.log('✅ Firebase Admin SDK inicializado correctamente');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Error intentando cargar configuración JSON:', error);
                 }
-
-                this.app = admin.initializeApp({
-                    credential: admin.credential.cert(serviceAccount),
-                });
             }
-
-            console.log('✅ Firebase Admin SDK inicializado correctamente');
         } catch (error) {
             console.error('❌ Error inicializando Firebase Admin SDK:', error);
-            throw error;
+            // No lanzar error para que el servicio no se detenga
         }
     }
 
@@ -65,6 +76,10 @@ export class FirebaseNotificationService {
         data?: Record<string, string>
     ): Promise<void> {
         try {
+            if (!this.app) {
+                console.warn('⚠️ Firebase no inicializado. Saltando envío de notificación.');
+                return;
+            }
             const message: admin.messaging.Message = {
                 notification: {
                     title,
@@ -138,6 +153,10 @@ export class FirebaseNotificationService {
         data?: Record<string, string>
     ): Promise<void> {
         try {
+            if (!this.app) {
+                console.warn('⚠️ Firebase no inicializado. Saltando envío batch.');
+                return;
+            }
             if (tokens.length === 0) {
                 console.warn('⚠️ [FCM] No hay tokens para enviar');
                 return;
