@@ -7,15 +7,39 @@ export class FirebaseNotificationService {
 
     private constructor(private deviceRepository: DeviceRepositoryPort) {
         // Inicializar Firebase Admin SDK
-        const credentialsPath = process.env.FIREBASE_CREDENTIALS_PATH || './src/config/aura-firebase-adminsdk.json';
-
         try {
-            // Usar path absoluto o relativo desde la raíz del proyecto
-            const serviceAccount = require(`../${credentialsPath.replace('./src/', '')}`);
+            // Opción 1: Usar variables de entorno (Recomendado para producción)
+            if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+                console.log('🔐 Inicializando Firebase con variables de entorno');
 
-            this.app = admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount),
-            });
+                this.app = admin.initializeApp({
+                    credential: admin.credential.cert({
+                        projectId: process.env.FIREBASE_PROJECT_ID,
+                        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                        // Reemplazar \\n con saltos de línea reales si vienen escapados
+                        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+                    }),
+                });
+            }
+            // Opción 2: Usar archivo JSON (Desarrollo local)
+            else {
+                console.log('📂 Inicializando Firebase con archivo JSON');
+                const credentialsPath = process.env.FIREBASE_CREDENTIALS_PATH || './src/config/aura-firebase-adminsdk.json';
+
+                // Usar path absoluto o relativo desde la raíz del proyecto
+                // Ajuste para que funcione tanto en dev (src) como en prod (dist)
+                let serviceAccount;
+                try {
+                    serviceAccount = require(`../${credentialsPath.replace('./src/', '')}`);
+                } catch (e) {
+                    // Intento alternativo para cuando corre desde dist
+                    serviceAccount = require(`../../config/aura-firebase-adminsdk.json`);
+                }
+
+                this.app = admin.initializeApp({
+                    credential: admin.credential.cert(serviceAccount),
+                });
+            }
 
             console.log('✅ Firebase Admin SDK inicializado correctamente');
         } catch (error) {
