@@ -7,8 +7,13 @@ export class SocialEventHandler {
     constructor(private sendNotificationUseCase: SendNotificationUseCase) { }
 
     async handlePublicationLiked(payload: any) {
+        console.log('💖 [PUBLICATION_LIKED] Procesando evento de like...');
+        console.log('   📦 Payload:', JSON.stringify(payload, null, 2));
+
         // Notificar al dueño de la publicación que le dieron like
         if (payload.authorId !== payload.userId) {
+            console.log(`   ✅ Enviando notificación a autor: ${payload.authorId}`);
+
             await this.sendNotificationUseCase.execute(
                 payload.authorId,
                 'PUSH',
@@ -22,6 +27,10 @@ export class SocialEventHandler {
                     source: 'social_service'
                 }
             );
+
+            console.log(`   📤 Notificación enviada exitosamente`);
+        } else {
+            console.log(`   ⏭️ Usuario dio like a su propia publicación - no se notifica`);
         }
     }
 

@@ -56,7 +56,7 @@ export class AuthEventHandler {
             payload.userId,
             'EMAIL',
             '🔑 Recuperación de Contraseña',
-            payload.recoveryLink,
+            payload.resetUrl, // Corrected: was 'recoveryLink'
             {
                 recipientEmail: payload.email,
                 type: 'PASSWORD_RECOVERY',

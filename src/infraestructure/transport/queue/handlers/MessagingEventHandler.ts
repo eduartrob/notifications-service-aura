@@ -10,6 +10,10 @@ export class MessagingEventHandler {
      * Notificar al destinatario que recibió un nuevo mensaje
      */
     async handleMessageReceived(payload: any) {
+        console.log('💬 [MESSAGE_RECEIVED] Procesando evento de mensaje...');
+        console.log('   📦 Payload:', JSON.stringify(payload, null, 2));
+        console.log(`   ✅ Enviando notificación a destinatario: ${payload.recipientUserId}`);
+
         await this.sendNotificationUseCase.execute(
             payload.recipientUserId,
             'PUSH',
@@ -24,6 +28,8 @@ export class MessagingEventHandler {
                 source: 'messaging_service'
             }
         );
+
+        console.log(`   📤 Notificación de mensaje enviada exitosamente`);
     }
 
     /**
