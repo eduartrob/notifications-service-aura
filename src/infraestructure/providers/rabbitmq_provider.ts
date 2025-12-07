@@ -59,6 +59,11 @@ export class RabbitMQProvider {
       await (this.channel as any).bindQueue(q.queue, EXCHANGE_NAME, authBindingKey);
       console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${EXCHANGE_NAME} con key: ${authBindingKey}`);
 
+      // 3.1 UNIR (Bind) para eventos de password (auth.password.reset_requested, etc.)
+      const authPasswordBindingKey = 'auth.password.*';
+      await (this.channel as any).bindQueue(q.queue, EXCHANGE_NAME, authPasswordBindingKey);
+      console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${EXCHANGE_NAME} con key: ${authPasswordBindingKey}`);
+
       // 4. UNIR (Bind) para eventos sociales (likes, comments, follows)
       // Usamos social.# para capturar TODOS los niveles: social.publication.liked, social.user.followed, etc.
       const socialBindingKey = 'social.#';
