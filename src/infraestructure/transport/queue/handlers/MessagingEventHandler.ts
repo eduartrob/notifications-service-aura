@@ -8,24 +8,35 @@ export class MessagingEventHandler {
 
     /**
      * Notificar al destinatario que recibió un nuevo mensaje
+     * Formato estilo WhatsApp: nombre como título, mensaje como cuerpo
      */
     async handleMessageReceived(payload: any) {
         console.log('💬 [MESSAGE_RECEIVED] Procesando evento de mensaje...');
         console.log('   📦 Payload:', JSON.stringify(payload, null, 2));
         console.log(`   ✅ Enviando notificación a destinatario: ${payload.recipientUserId}`);
 
+        // 🔥 WhatsApp-style: title = sender name, body = just the message
+        const senderName = payload.senderUsername || 'Nuevo mensaje';
+        const messageBody = payload.messagePreview || '';
+
         await this.sendNotificationUseCase.execute(
             payload.recipientUserId,
             'PUSH',
-            '💬 Nuevo Mensaje',
-            `${payload.senderUsername}: ${payload.messagePreview}`,
+            senderName,  // Title is just the sender name
+            messageBody, // Body is just the message (no prefix)
             {
                 type: 'NEW_MESSAGE',
                 conversationId: payload.conversationId,
                 messageId: payload.messageId,
                 senderUserId: payload.senderUserId,
+                senderName: senderName,
                 deepLink: `/chat/${payload.conversationId}`,
-                source: 'messaging_service'
+                source: 'messaging_service',
+                // 🔥 For grouped notifications (tag/group key)
+                android_channel_id: 'aura_messages',
+                android_group: `chat_${payload.conversationId}`,
+                tag: `chat_${payload.conversationId}`,
+                collapse_key: `chat_${payload.conversationId}`
             }
         );
 

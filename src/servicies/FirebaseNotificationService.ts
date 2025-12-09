@@ -80,12 +80,43 @@ export class FirebaseNotificationService {
                 console.warn('⚠️ Firebase no inicializado. Saltando envío de notificación.');
                 return;
             }
+
+            // 🔥 Build Android config for grouped notifications (WhatsApp style)
+            const androidConfig: admin.messaging.AndroidConfig = {
+                priority: 'high',
+                notification: {
+                    channelId: data?.android_channel_id || 'aura_notifications',
+                    // Tag groups notifications from same conversation
+                    tag: data?.tag || undefined,
+                    priority: 'high',
+                    defaultSound: true,
+                    defaultVibrateTimings: true,
+                },
+                // CollapseKey for stacking (like WhatsApp)
+                collapseKey: data?.collapse_key || undefined,
+            };
+
             const message: admin.messaging.Message = {
                 notification: {
                     title,
                     body,
                 },
                 data: data || {},
+                android: androidConfig,
+                apns: {
+                    payload: {
+                        aps: {
+                            alert: {
+                                title,
+                                body,
+                            },
+                            sound: 'default',
+                            badge: 1,
+                            // Thread ID for grouping on iOS
+                            threadId: data?.android_group || data?.conversationId || undefined,
+                        },
+                    },
+                },
                 token: fcmToken,
             };
 
