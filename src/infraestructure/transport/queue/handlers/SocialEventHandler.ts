@@ -14,11 +14,14 @@ export class SocialEventHandler {
         if (payload.authorId !== payload.userId) {
             console.log(`   ✅ Enviando notificación a autor: ${payload.authorId}`);
 
+            // 🔥 Use displayName from payload
+            const likerName = payload.likerDisplayName || 'Alguien';
+
             await this.sendNotificationUseCase.execute(
                 payload.authorId,
                 'PUSH',
                 '❤️ Nuevo Me Gusta',
-                `A alguien le gustó tu publicación`,
+                `A ${likerName} le gustó tu publicación`,
                 {
                     type: 'POST_LIKE',
                     postId: payload.publicationId,
@@ -35,6 +38,9 @@ export class SocialEventHandler {
     }
 
     async handleCommentAdded(payload: any) {
+        // 🔥 Use displayName from payload
+        const commenterName = payload.commenterDisplayName || 'Alguien';
+
         // Notificar al dueño de la publicación que hay un nuevo comentario
         if (payload.publicationAuthorId !== payload.authorId) {
             const commentPreview = payload.text?.substring(0, 50) || 'un comentario';
@@ -42,7 +48,7 @@ export class SocialEventHandler {
                 payload.publicationAuthorId,
                 'PUSH',
                 '💬 Nuevo Comentario',
-                `Alguien comentó en tu publicación: "${commentPreview}..."`,
+                `${commenterName} comentó en tu publicación: "${commentPreview}..."`,
                 {
                     type: 'POST_COMMENT',
                     postId: payload.publicationId,
