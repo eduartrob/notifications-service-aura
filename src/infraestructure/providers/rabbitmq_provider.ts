@@ -2,6 +2,7 @@ import * as amqp from 'amqplib';
 import { RABBIT_URL, RABBIT_QUEUE } from '../../config/config';
 
 const EXCHANGE_NAME = 'domain_events';
+const AURA_EXCHANGE_NAME = 'aura_events';  // Exchange usado por social-service y messaging-service
 
 export class RabbitMQProvider {
   private static instance: RabbitMQProvider;
@@ -47,33 +48,38 @@ export class RabbitMQProvider {
 
       // ** CONFIGURACIÓN DE ESTRUCTURAS DE COLAS (Binding) **
 
-      // 1. Asegurar el Exchange de tipo 'topic'
+      // 1. Asegurar el Exchange de auth-service (domain_events)
       await (this.channel as any).assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
+
+      // 1.1 Asegurar el Exchange de social-service y messaging-service (aura_events)
+      await (this.channel as any).assertExchange(AURA_EXCHANGE_NAME, 'topic', { durable: true });
 
       // 2. Asegurar que MI cola (Notificaciones) existe
       const q = await (this.channel as any).assertQueue(RABBIT_QUEUE, { durable: true });
 
-      // 3. UNIR (Bind) mi cola al Exchange
-      // La clave de routing 'auth.user.*' significa: Escuchar eventos de usuarios (auth.user.registered, auth.user.logged_in, etc.)
+      // ===== BINDINGS PARA AUTH-SERVICE (domain_events) =====
+
+      // 3. UNIR (Bind) mi cola al Exchange domain_events para auth
       const authBindingKey = 'auth.user.*';
       await (this.channel as any).bindQueue(q.queue, EXCHANGE_NAME, authBindingKey);
       console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${EXCHANGE_NAME} con key: ${authBindingKey}`);
 
-      // 3.1 UNIR (Bind) para eventos de password (auth.password.reset_requested, etc.)
+      // 3.1 UNIR (Bind) para eventos de password
       const authPasswordBindingKey = 'auth.password.*';
       await (this.channel as any).bindQueue(q.queue, EXCHANGE_NAME, authPasswordBindingKey);
       console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${EXCHANGE_NAME} con key: ${authPasswordBindingKey}`);
 
-      // 4. UNIR (Bind) para eventos sociales (likes, comments, follows)
-      // Usamos social.# para capturar TODOS los niveles: social.publication.liked, social.user.followed, etc.
+      // ===== BINDINGS PARA SOCIAL-SERVICE Y MESSAGING-SERVICE (aura_events) =====
+
+      // 4. UNIR (Bind) para eventos sociales (likes, comments, friendships, communities)
       const socialBindingKey = 'social.#';
-      await (this.channel as any).bindQueue(q.queue, EXCHANGE_NAME, socialBindingKey);
-      console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${EXCHANGE_NAME} con key: ${socialBindingKey}`);
+      await (this.channel as any).bindQueue(q.queue, AURA_EXCHANGE_NAME, socialBindingKey);
+      console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${AURA_EXCHANGE_NAME} con key: ${socialBindingKey}`);
 
       // 5. UNIR (Bind) para eventos de mensajería
       const messagingBindingKey = 'messaging.#';
-      await (this.channel as any).bindQueue(q.queue, EXCHANGE_NAME, messagingBindingKey);
-      console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${EXCHANGE_NAME} con key: ${messagingBindingKey}`);
+      await (this.channel as any).bindQueue(q.queue, AURA_EXCHANGE_NAME, messagingBindingKey);
+      console.log(`✅ Queue: ${RABBIT_QUEUE} bindeada a Exchange: ${AURA_EXCHANGE_NAME} con key: ${messagingBindingKey}`);
 
       // Devolver el canal tipado
       if (!this.channel) {
