@@ -175,10 +175,15 @@ export class FirebaseNotificationService {
         } catch (error: any) {
             console.error(`❌ [FCM] Error enviando notificación:`, error);
 
-            // Si el token es inválido o no está registrado, eliminarlo de la BD
+            // 🔥 Si el token es inválido o no está registrado, eliminarlo de la BD
             if (error.code === 'messaging/invalid-registration-token' ||
                 error.code === 'messaging/registration-token-not-registered') {
                 console.warn(`⚠️ [FCM] Token inválido, eliminando de la base de datos: ${fcmToken.substring(0, 20)}...`);
+                try {
+                    await this.deviceRepository.removeDeviceByToken(fcmToken);
+                } catch (deleteError) {
+                    console.error(`❌ [FCM] Error eliminando token inválido:`, deleteError);
+                }
             }
 
             throw error;

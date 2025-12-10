@@ -1,5 +1,7 @@
 import { DeviceRepositoryPort } from "../domain/device_repository_port";
 
+const MAX_DEVICES_PER_USER = 3;
+
 export class AddDeviceTokenUseCase {
     constructor(private deviceRepository: DeviceRepositoryPort) { }
 
@@ -9,21 +11,17 @@ export class AddDeviceTokenUseCase {
         deviceInfo?: string
     ): Promise<void> {
         try {
-            console.log(`[AddDeviceToken] Agregando token para usuario ${userId}`);
+            console.log(`[AddDeviceToken] Procesando token para usuario ${userId}`);
 
-            // Verificar si el token ya existe
-            const exists = await this.deviceRepository.tokenExists(fcmToken);
-
-            if (exists) {
-                console.log(`[AddDeviceToken] Token ya existe, omitiendo: ${fcmToken.substring(0, 20)}...`);
-                return;
-            }
-
-            // Agregar el nuevo dispositivo
+            // 🔥 Always upsert - if token exists with another user, it gets reassigned
             await this.deviceRepository.addDevice(userId, fcmToken, deviceInfo);
-            console.log(`✅ [AddDeviceToken] Token agregado exitosamente para usuario ${userId}`);
+            console.log(`✅ [AddDeviceToken] Token registrado/actualizado para usuario ${userId}`);
+
+            // 🔥 Enforce max devices limit - remove oldest if more than limit
+            await this.deviceRepository.enforceMaxDevices(userId, MAX_DEVICES_PER_USER);
+
         } catch (error) {
-            console.error(`❌ [AddDeviceToken] Error agregando token:`, error);
+            console.error(`❌ [AddDeviceToken] Error procesando token:`, error);
             throw error;
         }
     }

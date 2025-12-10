@@ -60,4 +60,41 @@ export class PrismaDeviceRepository implements DeviceRepositoryPort {
         });
         return device !== null;
     }
+
+    /**
+     * 🔥 Remove a token WITHOUT validating userId (for automatic cleanup)
+     */
+    async removeDeviceByToken(fcmToken: string): Promise<void> {
+        try {
+            await this.prisma.userDevice.delete({
+                where: { fcmToken },
+            });
+            console.log(`🧹 [PrismaDeviceRepository] Token eliminado: ${fcmToken.substring(0, 20)}...`);
+        } catch (error) {
+            console.warn(`[PrismaDeviceRepository] Token no encontrado para eliminar: ${fcmToken.substring(0, 20)}...`);
+        }
+    }
+
+    /**
+     * 🔥 Enforce max devices per user, removing oldest ones
+     */
+    async enforceMaxDevices(userId: string, maxDevices: number): Promise<void> {
+        // Get all devices ordered by creation date (oldest first)
+        const devices = await this.prisma.userDevice.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'asc' },
+        });
+
+        // If more than limit, remove the oldest ones
+        if (devices.length > maxDevices) {
+            const devicesToRemove = devices.slice(0, devices.length - maxDevices);
+            console.log(`🧹 [PrismaDeviceRepository] Usuario ${userId} tiene ${devices.length} dispositivos, eliminando ${devicesToRemove.length} más antiguos`);
+
+            for (const device of devicesToRemove) {
+                await this.prisma.userDevice.delete({
+                    where: { fcmToken: device.fcmToken }
+                });
+            }
+        }
+    }
 }
