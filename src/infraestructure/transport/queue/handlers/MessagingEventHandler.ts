@@ -16,7 +16,7 @@ export class MessagingEventHandler {
         console.log('   📦 Payload:', JSON.stringify(payload, null, 2));
         console.log(`   ✅ Enviando notificación a destinatario: ${payload.recipientUserId}`);
 
-        // 🔥 WhatsApp-style: title = sender name, body = just the message
+        // 🔥 WhatsApp-style notification format
         const senderName = payload.senderUsername || 'Nuevo mensaje';
         const messageBody = payload.messagePreview || '';
 
@@ -26,17 +26,27 @@ export class MessagingEventHandler {
         const deepLink = isGroupMessage ? `/group-chat/${payload.groupId}` : `/chat/${payload.conversationId}`;
         const androidGroup = isGroupMessage ? `group_${payload.groupId}` : `chat_${payload.conversationId}`;
 
+        // 🔥 For groups: title = group name, body = "senderName: message"
+        // For 1-1: title = sender name, body = message
+        const notificationTitle = isGroupMessage
+            ? (payload.groupName || 'Grupo')
+            : senderName;
+        const notificationBody = isGroupMessage
+            ? `${senderName}: ${messageBody}`
+            : messageBody;
+
         console.log(`   📱 Tipo: ${isGroupMessage ? 'GRUPO' : 'CHAT 1-1'}, deepLink: ${deepLink}`);
 
         await this.sendNotificationUseCase.execute(
             payload.recipientUserId,
             'PUSH',
-            senderName,  // Title is just the sender name
-            messageBody, // Body is just the message (no prefix)
+            notificationTitle,  // Group name for groups, sender name for 1-1
+            notificationBody,   // "sender: message" for groups, just message for 1-1
             {
                 type: isGroupMessage ? 'NEW_GROUP_MESSAGE' : 'NEW_MESSAGE',
                 conversationId: payload.conversationId,
-                groupId: payload.groupId, // 🔥 Include groupId for deep links
+                groupId: payload.groupId,
+                groupName: payload.groupName || '', // 🔥 Include group name
                 messageId: payload.messageId,
                 senderUserId: payload.senderUserId,
                 senderName: senderName,
