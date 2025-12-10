@@ -30,6 +30,8 @@ export class MessagingEventHandler {
                 messageId: payload.messageId,
                 senderUserId: payload.senderUserId,
                 senderName: senderName,
+                // 🔥 Avatar URL for profile picture in notification
+                senderAvatarUrl: payload.senderAvatarUrl || '',
                 deepLink: `/chat/${payload.conversationId}`,
                 source: 'messaging_service',
                 // 🔥 For grouped notifications (tag/group key)
