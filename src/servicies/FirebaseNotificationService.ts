@@ -68,6 +68,8 @@ export class FirebaseNotificationService {
 
     /**
      * Envía una notificación push a un token FCM específico
+     * Para mensajes de chat, envía solo data (sin notification) para que
+     * la app maneje la visualización con MessagingStyle (estilo WhatsApp)
      */
     async sendToDevice(
         fcmToken: string,
@@ -81,44 +83,84 @@ export class FirebaseNotificationService {
                 return;
             }
 
-            // 🔥 Build Android config for grouped notifications (WhatsApp style)
-            const androidConfig: admin.messaging.AndroidConfig = {
-                priority: 'high',
-                notification: {
-                    channelId: data?.android_channel_id || 'aura_notifications',
-                    // Tag groups notifications from same conversation
-                    tag: data?.tag || undefined,
-                    priority: 'high',
-                    defaultSound: true,
-                    defaultVibrateTimings: true,
-                },
-                // CollapseKey for stacking (like WhatsApp)
-                collapseKey: data?.collapse_key || undefined,
+            // 🔥 Check if this is a data-only message (for chat notifications)
+            const isDataOnly = data?.type === 'NEW_MESSAGE';
+
+            // Ensure title and body are in data for the app to use
+            const enrichedData = {
+                ...data,
+                title: title,
+                body: body,
             };
 
-            const message: admin.messaging.Message = {
-                notification: {
-                    title,
-                    body,
-                },
-                data: data || {},
-                android: androidConfig,
-                apns: {
-                    payload: {
-                        aps: {
-                            alert: {
-                                title,
-                                body,
+            let message: admin.messaging.Message;
+
+            if (isDataOnly) {
+                // 🔥 DATA-ONLY: For chat messages - app handles display with MessagingStyle
+                console.log('📱 [FCM] Enviando mensaje data-only para chat (MessagingStyle)');
+                message = {
+                    data: enrichedData,
+                    android: {
+                        priority: 'high',
+                        // No notification here - app will show it
+                    },
+                    apns: {
+                        headers: {
+                            'apns-priority': '10',
+                        },
+                        payload: {
+                            aps: {
+                                'content-available': 1, // Background delivery
+                                'mutable-content': 1,   // Allow modification
+                                alert: {
+                                    title,
+                                    body,
+                                },
+                                sound: 'default',
+                                badge: 1,
+                                threadId: data?.android_group || data?.conversationId || undefined,
                             },
-                            sound: 'default',
-                            badge: 1,
-                            // Thread ID for grouping on iOS
-                            threadId: data?.android_group || data?.conversationId || undefined,
                         },
                     },
-                },
-                token: fcmToken,
-            };
+                    token: fcmToken,
+                };
+            } else {
+                // 🔥 STANDARD: For other notifications - show system notification
+                const androidConfig: admin.messaging.AndroidConfig = {
+                    priority: 'high',
+                    notification: {
+                        channelId: data?.android_channel_id || 'aura_notifications',
+                        tag: data?.tag || undefined,
+                        priority: 'high',
+                        defaultSound: true,
+                        defaultVibrateTimings: true,
+                    },
+                    collapseKey: data?.collapse_key || undefined,
+                };
+
+                message = {
+                    notification: {
+                        title,
+                        body,
+                    },
+                    data: enrichedData,
+                    android: androidConfig,
+                    apns: {
+                        payload: {
+                            aps: {
+                                alert: {
+                                    title,
+                                    body,
+                                },
+                                sound: 'default',
+                                badge: 1,
+                                threadId: data?.android_group || data?.conversationId || undefined,
+                            },
+                        },
+                    },
+                    token: fcmToken,
+                };
+            }
 
             const response = await admin.messaging().send(message);
             console.log(`✅ [FCM] Notificación enviada exitosamente:`, response);
@@ -129,8 +171,6 @@ export class FirebaseNotificationService {
             if (error.code === 'messaging/invalid-registration-token' ||
                 error.code === 'messaging/registration-token-not-registered') {
                 console.warn(`⚠️ [FCM] Token inválido, eliminando de la base de datos: ${fcmToken.substring(0, 20)}...`);
-                // Nota: necesitaríamos el userId para eliminarlo correctamente
-                // Por ahora solo logueamos el error
             }
 
             throw error;
