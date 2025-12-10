@@ -87,11 +87,19 @@ export class FirebaseNotificationService {
             const isDataOnly = data?.type === 'NEW_MESSAGE';
 
             // Ensure title and body are in data for the app to use
-            const enrichedData = {
+            const rawData = {
                 ...data,
                 title: title,
                 body: body,
             };
+
+            // Sanitize data: remove null/undefined and convert everything to string
+            const enrichedData: Record<string, string> = {};
+            Object.entries(rawData).forEach(([key, value]) => {
+                if (value !== null && value !== undefined) {
+                    enrichedData[key] = String(value);
+                }
+            });
 
             let message: admin.messaging.Message;
 
@@ -233,12 +241,22 @@ export class FirebaseNotificationService {
                 return;
             }
 
+            // Sanitize data
+            const sanitizedData: Record<string, string> = {};
+            if (data) {
+                Object.entries(data).forEach(([key, value]) => {
+                    if (value !== null && value !== undefined) {
+                        sanitizedData[key] = String(value);
+                    }
+                });
+            }
+
             const message: admin.messaging.MulticastMessage = {
                 notification: {
                     title,
                     body,
                 },
-                data: data || {},
+                data: sanitizedData,
                 tokens,
             };
 
