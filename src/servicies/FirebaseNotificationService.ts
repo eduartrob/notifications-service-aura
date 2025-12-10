@@ -83,8 +83,8 @@ export class FirebaseNotificationService {
                 return;
             }
 
-            // 🔥 Check if this is a data-only message (for chat notifications)
-            const isDataOnly = data?.type === 'NEW_MESSAGE';
+            // 🔥 Check if this is a data-only message (for chat notifications - both 1-1 and group)
+            const isDataOnly = data?.type === 'NEW_MESSAGE' || data?.type === 'NEW_GROUP_MESSAGE';
 
             // Ensure title and body are in data for the app to use
             const rawData = {
