@@ -9,6 +9,7 @@ export class MessagingEventHandler {
     /**
      * Notificar al destinatario que recibió un nuevo mensaje
      * Formato estilo WhatsApp: nombre como título, mensaje como cuerpo
+     * 🔥 Soporta tanto mensajes 1-1 como de grupo
      */
     async handleMessageReceived(payload: any) {
         console.log('💬 [MESSAGE_RECEIVED] Procesando evento de mensaje...');
@@ -19,30 +20,39 @@ export class MessagingEventHandler {
         const senderName = payload.senderUsername || 'Nuevo mensaje';
         const messageBody = payload.messagePreview || '';
 
+        // 🔥 Determine if this is a group message or 1-1 conversation
+        const isGroupMessage = payload.groupId != null;
+        const chatId = isGroupMessage ? payload.groupId : payload.conversationId;
+        const deepLink = isGroupMessage ? `/group-chat/${payload.groupId}` : `/chat/${payload.conversationId}`;
+        const androidGroup = isGroupMessage ? `group_${payload.groupId}` : `chat_${payload.conversationId}`;
+
+        console.log(`   📱 Tipo: ${isGroupMessage ? 'GRUPO' : 'CHAT 1-1'}, deepLink: ${deepLink}`);
+
         await this.sendNotificationUseCase.execute(
             payload.recipientUserId,
             'PUSH',
             senderName,  // Title is just the sender name
             messageBody, // Body is just the message (no prefix)
             {
-                type: 'NEW_MESSAGE',
+                type: isGroupMessage ? 'NEW_GROUP_MESSAGE' : 'NEW_MESSAGE',
                 conversationId: payload.conversationId,
+                groupId: payload.groupId, // 🔥 Include groupId for deep links
                 messageId: payload.messageId,
                 senderUserId: payload.senderUserId,
                 senderName: senderName,
                 // 🔥 Avatar URL for profile picture in notification
                 senderAvatarUrl: payload.senderAvatarUrl || '',
-                deepLink: `/chat/${payload.conversationId}`,
+                deepLink: deepLink,
                 source: 'messaging_service',
                 // 🔥 For grouped notifications (tag/group key)
                 android_channel_id: 'aura_messages',
-                android_group: `chat_${payload.conversationId}`,
-                tag: `chat_${payload.conversationId}`,
-                collapse_key: `chat_${payload.conversationId}`
+                android_group: androidGroup,
+                tag: androidGroup,
+                collapse_key: androidGroup
             }
         );
 
-        console.log(`   📤 Notificación de mensaje enviada exitosamente`);
+        console.log(`   📤 Notificación de mensaje ${isGroupMessage ? 'de grupo' : '1-1'} enviada exitosamente`);
     }
 
     /**
