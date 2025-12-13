@@ -1,3 +1,9 @@
+# syntax=docker/dockerfile:1.4
+# ================================
+# AURA Notifications Service
+# OPTIMIZED: BuildKit cache mounts
+# ================================
+
 # Stage 1: Build
 FROM node:20-alpine AS builder
 
@@ -8,7 +14,9 @@ RUN apk add --no-cache openssl
 
 COPY package*.json ./
 
-RUN npm install
+# Install dependencies with BuildKit cache mount
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline
 
 COPY . .
 
@@ -28,7 +36,9 @@ RUN apk add --no-cache openssl
 
 COPY package*.json ./
 
-RUN npm install --production
+# Install only production dependencies with cache mount
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline --omit=dev
 
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
